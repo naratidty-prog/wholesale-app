@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ขายส่งอะไหล่</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#c62828">
+<meta name="app-build" content="1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+
+<!-- ตั้งค่าลิงก์ระบบหลังบ้าน (ครั้งแรกครั้งเดียว) -->
+<section id="scr-setup" class="screen center hidden">
+  <div class="card narrow">
+    <div class="logo">ขายส่ง<span>อะไหล่</span></div>
+    <h2>ตั้งค่าครั้งแรก</h2>
+    <p class="muted">วางลิงก์ Web app ของระบบขายส่งที่ได้จาก Apps Script (ลงท้ายด้วย <code>/exec</code>)</p>
+    <input id="setup-url" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="primary block" id="setup-save">บันทึก</button>
+    <p class="err" id="setup-err"></p>
+  </div>
+</section>
+
+<!-- เปิดเครื่องด้วยรหัสแอดมิน -->
+<section id="scr-unlock" class="screen center hidden">
+  <form class="card narrow" id="unlock-form" autocomplete="off">
+    <div class="logo">ขายส่ง<span>อะไหล่</span></div>
+    <p class="muted">เครื่องนี้ยังไม่ได้เปิดใช้ ให้แอดมินใส่รหัสครั้งเดียว</p>
+    <label>รหัสแอดมิน<input id="unlock-code" type="password" required></label>
+    <button class="primary block" type="submit">เปิดใช้เครื่องนี้</button>
+    <p class="err" id="unlock-err"></p>
+    <p class="small"><a href="#" id="unlock-reset-url">เปลี่ยนลิงก์ระบบหลังบ้าน</a></p>
+  </form>
+</section>
+
+<section id="scr-app" class="screen hidden">
+  <header class="topbar no-print">
+    <div class="logo small">ขายส่ง<span>อะไหล่</span></div>
+    <div class="staff"><label>พนักงาน <input id="staff-name" placeholder="ชื่อผู้ทำรายการ"></label></div>
+    <span id="parts-chip" class="chip"></span>
+    <span id="net-chip" class="chip"></span>
+  </header>
+  <nav class="tabs no-print">
+    <button data-tab="order" class="active">รับออเดอร์</button>
+    <button data-tab="deliver">ส่งมอบ / ยิงบาร์โค้ด</button>
+    <button data-tab="customer">ลูกค้า</button>
+    <button data-tab="pending">อะไหล่ค้างรับ</button>
+    <button data-tab="debt">ติดตามหนี้</button>
+    <button data-tab="docs">เอกสาร / Excel</button>
+    <button data-tab="admin">แอดมิน</button>
+  </nav>
+  <div id="parts-progress" class="banner hidden no-print"></div>
+
+  <!-- ========================= รับออเดอร์ ========================= -->
+  <main id="tab-order" class="tab no-print">
+    <div class="grid2">
+      <div class="card">
+        <h3>ลูกค้า</h3>
+        <div class="cust-pick" data-for="order"></div>
+        <div class="seg" id="order-type">
+          <button data-v="รายสัปดาห์" class="on">สั่งรายสัปดาห์</button>
+          <button data-v="ด่วน">สั่งด่วน (1-3 วัน)</button>
+        </div>
+        <div id="order-lock" class="alert hidden"></div>
+      </div>
+      <div class="card" id="week-box"><p class="muted">เลือกลูกค้าเพื่อดูยอดสั่งสัปดาห์นี้</p></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <input id="order-scan" class="scan" placeholder="ยิงบาร์โค้ด / พิมพ์รหัสอะไหล่ แล้วกด Enter  (ใส่ 3*รหัส = 3 ชิ้น)" autocomplete="off">
+        <input id="order-qty" type="number" min="1" value="1" class="qty" title="จำนวน">
+        <button id="order-search">ค้นหาชื่อ</button>
+        <button id="order-manual">+ พิมพ์เอง</button>
+        <label class="btn red-outline">📷 อ่านจากรูป / PDF<input id="order-file" type="file" accept="image/*,application/pdf" multiple hidden></label>
+      </div>
+      <div id="order-images" class="images hidden"></div>
+      <div id="order-review" class="alert info hidden"></div>
+      <div class="table-wrap">
+        <table class="lines" id="order-table">
+          <thead><tr><th>#</th><th>รหัสอะไหล่</th><th>ชื่ออะไหล่</th><th>รุ่น</th><th class="num">จำนวน</th><th class="num">ราคาขาย</th><th class="num">สุทธิ/ชิ้น*</th><th class="num">รวมสุทธิ*</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small">* ราคาสุทธิโดยประมาณตามอัตราตอนนี้ ราคาจริงคิดตอนส่งมอบตามยอดสั่งทั้งสัปดาห์</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>มัดจำ / หมายเหตุ</h3>
+        <div class="row">
+          <label>วางมัดจำ (บาท)<input id="order-deposit" type="number" min="0" step="1" placeholder="0"></label>
+          <label>&nbsp;<span class="pct-btns"><button data-pct="30" class="mini">30%</button><button data-pct="50" class="mini">50%</button></span></label>
+        </div>
+        <div class="row">
+          <label>รับมัดจำโดย<select id="order-dep-method"><option>เงินสด</option><option>โอนเงิน</option></select></label>
+          <label>รายละเอียดโอน<input id="order-dep-ref" placeholder="ธนาคาร / เวลา"></label>
+        </div>
+        <label>หมายเหตุ<input id="order-note"></label>
+      </div>
+      <div class="card totals">
+        <div><span>จำนวนรายการ</span><b id="ot-count">0</b></div>
+        <div><span>รวมราคาขาย</span><b id="ot-gross">0.00</b></div>
+        <div><span>ส่วนลดโดยประมาณ</span><b id="ot-disc">0.00</b></div>
+        <div class="big"><span>สุทธิโดยประมาณ</span><b id="ot-net">0.00</b></div>
+        <div><span>มัดจำ</span><b id="ot-dep">0.00</b></div>
+        <div class="actions">
+          <button id="order-clear" class="ghost">ล้าง</button>
+          <button id="order-save" class="primary">บันทึก + พิมพ์ใบรับออเดอร์</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================= ส่งมอบ ========================= -->
+  <main id="tab-deliver" class="tab hidden no-print">
+    <div class="grid2">
+      <div class="card">
+        <h3>ลูกค้า</h3>
+        <div class="cust-pick" data-for="deliver"></div>
+        <div id="deliver-lock" class="alert hidden"></div>
+      </div>
+      <div class="card">
+        <h3>ยิงบาร์โค้ดอะไหล่ที่มาถึง</h3>
+        <input id="deliver-scan" class="scan" placeholder="ยิงบาร์โค้ด / พิมพ์รหัส แล้วกด Enter" autocomplete="off">
+        <div class="row gap">
+          <button id="deliver-all" class="ghost">ส่งครบทุกรายการ</button>
+          <button id="deliver-none" class="ghost">ล้างจำนวนส่ง</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="lines" id="deliver-table">
+          <thead><tr><th>ออเดอร์</th><th>รหัสอะไหล่</th><th>ชื่ออะไหล่</th><th class="num">สั่ง</th><th class="num">ค้าง</th><th class="num">ส่งครั้งนี้</th><th class="num">สุทธิ/ชิ้น</th><th class="num">รวม</th><th>อัตรา</th></tr></thead>
+          <tbody><tr><td colspan="9" class="muted">เลือกลูกค้าก่อน</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>ชำระเงิน</h3>
+        <div class="pay">
+          <label class="radio"><input type="radio" name="dl-pay" value="เงินสด" checked> 1. เงินสด</label>
+          <label class="radio"><input type="radio" name="dl-pay" value="โอนเงิน"> 2. โอนเข้าธนาคาร</label>
+          <input id="dl-pay-ref" placeholder="ธนาคาร / เลขบัญชี / เวลาโอน" class="hidden">
+          <label class="radio"><input type="radio" name="dl-pay" value="ค้างจ่าย"> 3. ค้างจ่าย (ตั้งเป็นลูกหนี้)</label>
+        </div>
+        <label class="check"><input type="checkbox" id="dl-tax"> ต้องการใบกำกับภาษีฉบับเต็ม</label>
+        <label class="check"><input type="checkbox" id="dl-usedep" checked> หักเงินมัดจำของออเดอร์</label>
+        <label>หมายเหตุ<input id="dl-note"></label>
+      </div>
+      <div class="card totals">
+        <div><span>รวมราคาขาย</span><b id="dt-gross">0.00</b></div>
+        <div><span>ส่วนลด</span><b id="dt-disc">0.00</b></div>
+        <div><span>สุทธิ</span><b id="dt-net">0.00</b></div>
+        <div><span>หักมัดจำ (มีอยู่ <span id="dt-depav">0.00</span>)</span><b id="dt-dep">0.00</b></div>
+        <div class="big"><span>ยอดชำระ</span><b id="dt-due">0.00</b></div>
+        <div class="actions"><button id="deliver-save" class="primary">บันทึก + พิมพ์บิลส่งมอบ</button></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================= ลูกค้า ========================= -->
+  <main id="tab-customer" class="tab hidden no-print">
+    <div class="card">
+      <div class="row wrap">
+        <div class="cust-pick grow" data-for="customer"></div>
+        <button id="cv-refresh" class="ghost">โหลดใหม่</button>
+        <button id="cv-new" class="ghost">+ ลูกค้าใหม่</button>
+      </div>
+    </div>
+    <div id="cv-body"></div>
+  </main>
+
+  <!-- ========================= ค้างรับ ========================= -->
+  <main id="tab-pending" class="tab hidden no-print">
+    <div class="card">
+      <div class="row wrap">
+        <input id="pd-filter" class="grow" placeholder="กรองชื่อลูกค้า / รหัส / ชื่ออะไหล่">
+        <button id="pd-load" class="ghost">โหลดใหม่</button>
+        <button id="pd-excel">ดาวน์โหลด Excel</button>
+      </div>
+    </div>
+    <div id="pd-body"></div>
+  </main>
+
+  <!-- ========================= ติดตามหนี้ ========================= -->
+  <main id="tab-debt" class="tab hidden no-print">
+    <div class="card">
+      <div class="row wrap">
+        <input id="db-filter" class="grow" placeholder="กรองชื่อลูกค้า">
+        <label class="check"><input type="checkbox" id="db-late"> เฉพาะเกินกำหนด</label>
+        <button id="db-load" class="ghost">โหลดใหม่</button>
+        <button id="db-excel">ดาวน์โหลด Excel</button>
+      </div>
+      <div id="db-sum" class="stats"></div>
+    </div>
+    <div class="card"><div class="table-wrap"><table class="lines" id="db-table"><thead><tr>
+      <th>รหัส</th><th>ลูกค้า</th><th class="num">ยอดหนี้</th><th class="num">ยังไม่ถึงกำหนด</th><th class="num">เกิน 1-7 วัน</th><th class="num">เกิน 8-30 วัน</th><th class="num">เกิน 30 วัน</th><th>ครบกำหนดถัดไป</th><th>สถานะ</th>
+    </tr></thead><tbody></tbody></table></div></div>
+  </main>
+
+  <!-- ========================= เอกสาร ========================= -->
+  <main id="tab-docs" class="tab hidden no-print">
+    <div class="card">
+      <div class="row wrap">
+        <label>ตั้งแต่<input id="dc-from" type="date"></label>
+        <label>ถึง<input id="dc-to" type="date"></label>
+        <button id="dc-load" class="primary">แสดง</button>
+        <input id="dc-no" placeholder="เปิดเอกสารเลขที่ เช่น ARA6900001">
+        <button id="dc-open" class="ghost">เปิด</button>
+      </div>
+      <div class="row wrap gap">
+        <button id="dc-x-stock">Excel บันทึกขายอะไหล่ (ตัดสต็อก)</button>
+        <button id="dc-x-tax">Excel ข้อมูลใบกำกับภาษี</button>
+        <button id="dc-x-money">Excel รับเงินประจำวัน</button>
+        <button id="dc-x-orders">Excel ออเดอร์</button>
+      </div>
+    </div>
+    <div id="dc-body"></div>
+  </main>
+
+  <!-- ========================= แอดมิน ========================= -->
+  <main id="tab-admin" class="tab hidden no-print">
+    <div class="grid2">
+      <div class="card">
+        <h3>กลุ่มลูกค้าและส่วนลด</h3>
+        <div class="table-wrap"><table class="lines" id="ad-groups"><thead><tr><th>รหัส</th><th>ชื่อกลุ่ม</th><th>วิธีคิด</th><th class="num">ลด % (ไม่ถึงยอด)</th><th class="num">ลด % (ถึงยอด)</th><th class="num">ยอด/สัปดาห์</th></tr></thead><tbody></tbody></table></div>
+        <div class="row gap"><button id="ad-group-add" class="ghost">+ เพิ่มกลุ่ม</button><button id="ad-group-save" class="primary">บันทึกกลุ่ม</button></div>
+        <p class="muted small">กลุ่มแบบ "ทุนรวม VAT + %" ตั้ง % ที่ตัวลูกค้าแต่ละคน (แท็บ ลูกค้า &gt; แก้ข้อมูล)</p>
+      </div>
+      <div class="card">
+        <h3>ตั้งค่า</h3>
+        <form id="ad-settings" class="form2">
+          <label>ชื่อร้าน<input name="shop_name"></label>
+          <label>เบอร์โทร<input name="shop_phone"></label>
+          <label class="span2">ID ไฟล์ Google Sheet ระบบขายอะไหล่ 5 สาขา<input name="retail_sheet_id" placeholder="ตัวอักษรยาวๆ ในลิงก์ระหว่าง /d/ กับ /edit"></label>
+          <label>สั่งด่วน ลด %<input name="urgent_pct" type="number" step="0.01"></label>
+          <label>ปิดรับออเดอร์วันเสาร์ เวลา<input name="week_cutoff" placeholder="14:30"></label>
+          <label>เครดิต (วัน หลังส่งมอบ)<input name="credit_days" type="number"></label>
+          <label>ล็อกการขายเมื่อเกินกำหนด (วัน)<input name="lock_days" type="number"></label>
+          <label class="span2">ข้อความใต้ใบรับออเดอร์<input name="order_note"></label>
+          <label class="span2">ข้อความท้ายบิล<input name="bill_footer"></label>
+          <label>รุ่น Gemini<input name="gemini_model"></label>
+          <label>เปลี่ยนรหัสแอดมิน (เว้นว่าง = ไม่เปลี่ยน)<input name="new_admin_code" type="password" autocomplete="new-password"></label>
+          <div class="span2"><button class="primary" type="submit">บันทึกการตั้งค่า</button> <span id="ad-gemini" class="muted small"></span></div>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row wrap"><h3 class="grow">ลูกค้าทั้งหมด</h3><input id="ad-cfilter" placeholder="ค้นหา"><select id="ad-cgroup"><option value="">ทุกกลุ่ม</option></select><button id="ad-cexcel" class="ghost">Excel</button></div>
+      <div class="table-wrap tall"><table class="lines" id="ad-cust"><thead><tr><th>รหัส</th><th>ชื่อ</th><th>กลุ่ม</th><th class="num">ทุน+%</th><th class="num">เครดิต(วัน)</th><th>โทร</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="row"><h3 class="grow">ประวัติการทำรายการ</h3><button id="ad-audit" class="ghost">โหลด</button></div>
+      <div class="table-wrap tall"><table class="lines" id="ad-audit-table"><thead><tr><th>เวลา</th><th>พนักงาน</th><th>รายการ</th><th>เลขที่</th><th>อนุมัติ</th><th>รายละเอียด</th></tr></thead><tbody></tbody></table></div>
+      <p class="small"><a href="#" id="ad-lock">ปิดการใช้งานเครื่องนี้</a> · <a href="#" id="ad-reparts">โหลดรายการอะไหล่ใหม่ทั้งหมด</a></p>
+    </div>
+  </main>
+</section>
+
+<div id="modal" class="modal hidden no-print"><div id="modal-box" class="modal-box"></div></div>
+<div id="print-area" class="print-only"></div>
+
+<script src="config.js?v=1"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
