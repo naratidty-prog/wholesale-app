@@ -10,7 +10,7 @@
 <meta name="app-build" content="1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 
@@ -26,13 +26,14 @@
   </div>
 </section>
 
-<!-- เปิดเครื่องด้วยรหัสแอดมิน -->
+<!-- ล็อกอินพนักงานสำนักงานใหญ่ (ชื่อผู้ใช้และรหัสเดียวกับระบบขายอะไหล่ 5 สาขา) -->
 <section id="scr-unlock" class="screen center hidden">
   <form class="card narrow" id="unlock-form" autocomplete="off">
     <div class="logo">ขายส่ง<span>อะไหล่</span></div>
-    <p class="muted">เครื่องนี้ยังไม่ได้เปิดใช้ ให้แอดมินใส่รหัสครั้งเดียว</p>
-    <label>รหัสแอดมิน<input id="unlock-code" type="password" required></label>
-    <button class="primary block" type="submit">เปิดใช้เครื่องนี้</button>
+    <p class="muted">เข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสเดียวกับระบบขายอะไหล่ 5 สาขา (เฉพาะพนักงานสำนักงานใหญ่)</p>
+    <label>ชื่อผู้ใช้<input id="login-user" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
+    <label>รหัส<input id="unlock-code" type="password" required></label>
+    <button class="primary block" type="submit">เข้าสู่ระบบ</button>
     <p class="err" id="unlock-err"></p>
     <p class="small"><a href="#" id="unlock-reset-url">เปลี่ยนลิงก์ระบบหลังบ้าน</a></p>
   </form>
@@ -41,7 +42,7 @@
 <section id="scr-app" class="screen hidden">
   <header class="topbar no-print">
     <div class="logo small">ขายส่ง<span>อะไหล่</span></div>
-    <div class="staff"><label>พนักงาน <input id="staff-name" placeholder="ชื่อผู้ทำรายการ"></label></div>
+    <div class="staff">พนักงาน <b id="staff-name"></b> <a href="#" id="logout">ออกจากระบบ</a></div>
     <span id="parts-chip" class="chip"></span>
     <span id="net-chip" class="chip"></span>
   </header>
@@ -260,7 +261,7 @@
     <div class="card">
       <div class="row"><h3 class="grow">ประวัติการทำรายการ</h3><button id="ad-audit" class="ghost">โหลด</button></div>
       <div class="table-wrap tall"><table class="lines" id="ad-audit-table"><thead><tr><th>เวลา</th><th>พนักงาน</th><th>รายการ</th><th>เลขที่</th><th>อนุมัติ</th><th>รายละเอียด</th></tr></thead><tbody></tbody></table></div>
-      <p class="small"><a href="#" id="ad-lock">ปิดการใช้งานเครื่องนี้</a> · <a href="#" id="ad-reparts">โหลดรายการอะไหล่ใหม่ทั้งหมด</a></p>
+      <p class="small"><a href="#" id="ad-reparts">โหลดรายการอะไหล่ใหม่ทั้งหมด</a></p>
     </div>
   </main>
 </section>
@@ -268,8 +269,8 @@
 <div id="modal" class="modal hidden no-print"><div id="modal-box" class="modal-box"></div></div>
 <div id="print-area" class="print-only"></div>
 
-<script src="config.js?v=1"></script>
+<script src="config.js?v=2"></script>
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

@@ -45,9 +45,8 @@ label.radio, label.check { display: flex; align-items: center; gap: 8px; font-si
 .logo.small span { color: #ffcdd2; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; padding: 8px 18px; background: linear-gradient(90deg, var(--red-dark), var(--red)); color: #fff; }
 .topbar .staff { margin-left: auto; }
-.topbar .staff label { color: #fff; display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; }
-.topbar .staff input { width: 170px; margin: 0; padding: 5px 8px; border: none; }
-.topbar .staff input.need { outline: 3px solid #ffeb3b; }
+.topbar .staff { color: #fff; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.topbar .staff a { color: #ffcdd2; font-size: 13px; }
 .chip { font-size: 12px; background: rgba(255,255,255,.18); padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
 .tabs { display: flex; gap: 2px; padding: 0 14px; background: #3a3c40; overflow-x: auto; position: sticky; top: 48px; z-index: 9; }
 .tabs button { background: transparent; border: none; border-radius: 0; color: #cfd1d4; padding: 11px 14px; border-bottom: 3px solid transparent; }

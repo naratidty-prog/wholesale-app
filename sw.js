@@ -1,5 +1,5 @@
 // เก็บไฟล์แอปไว้ในเครื่องให้เปิดเร็ว เปลี่ยน VERSION ทุกครั้งที่แก้ไฟล์ในโฟลเดอร์ web
-const VERSION = 'wholesale-v1';
+const VERSION = 'wholesale-v2';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'vendor/xlsx.full.min.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', (e) => {

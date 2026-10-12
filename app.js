@@ -74,7 +74,7 @@ const DB = {
 /* ================================================================ สถานะ */
 
 const S = {
-  apiUrl: '', token: '', settings: {}, groups: [], customers: [], gemini: false,
+  apiUrl: '', token: '', user: null, settings: {}, groups: [], customers: [], gemini: false,
   parts: new Map(), partsNorm: new Map(), partsList: [],
   order: null, orderWeek: null, orderDebt: null,
   dl: null, cv: null, pending: [], debtors: [], docs: null
@@ -97,7 +97,7 @@ async function api(action, body = {}) {
   const j = await res.json();
   netChip(true);
   if (!j.ok) {
-    if (/เข้าสู่ระบบด้วยรหัสแอดมิน/.test(j.error)) { S.token = ''; LS.del('token'); show('scr-unlock'); }
+    if (/เข้าสู่ระบบใหม่/.test(j.error)) logout();
     throw new Error(j.error);
   }
   return j.data;
@@ -133,10 +133,14 @@ async function busy(btn, fn) {
   if (btn) btn.disabled = true;
   try { return await fn(); } catch (e) { toast(e.message, true, 6000); return undefined; } finally { if (btn) btn.disabled = false; }
 }
+// ชื่อผู้ทำรายการ = คนที่ล็อกอิน (หลังบ้านใช้ชื่อจากการล็อกอินเสมอ)
 function staffName() {
-  const v = $('#staff-name').value.trim();
-  if (!v) { $('#staff-name').classList.add('need'); $('#staff-name').focus(); throw new Error('กรุณาใส่ชื่อพนักงานด้านบนขวาก่อน'); }
-  return v;
+  if (!S.user) { logout(); throw new Error('กรุณาเข้าสู่ระบบ'); }
+  return S.user.name;
+}
+function logout() {
+  S.token = ''; S.user = null; LS.del('token'); LS.del('user');
+  $('#unlock-code').value = ''; show('scr-unlock');
 }
 // ขอรหัสแอดมินบนหน้าจอ แล้วส่งให้หลังบ้านตรวจ
 function askAdmin(title, detail = '', needReason = false) {
@@ -165,12 +169,15 @@ async function boot() {
   try { await DB.open(); } catch (e) { toast('เปิดที่เก็บข้อมูลในเครื่องไม่ได้', true); }
   S.apiUrl = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || LS.get('apiUrl');
   S.token = LS.get('token');
-  $('#staff-name').value = LS.get('staff');
+  try { S.user = JSON.parse(LS.get('user') || 'null'); } catch (e) { S.user = null; }
+  if (!S.user) S.token = '';
+  $('#login-user').value = LS.get('lastUser');
   if (!S.apiUrl) return show('scr-setup');
   if (!S.token) return show('scr-unlock');
   await start();
 }
 async function start() {
+  $('#staff-name').textContent = S.user ? S.user.name : '';
   show('scr-app');
   try {
     const b = await api('boot');
@@ -510,7 +517,6 @@ async function saveOrder(btn) {
       body.approval = ap.approval;
     }
     const saved = await api('saveOrder', body);
-    LS.set('staff', by);
     toast('บันทึกออเดอร์ ' + saved.order_no + ' แล้ว');
     printDocs(orderDoc(saved, 'สำหรับร้าน') + orderDoc(saved, 'สำหรับลูกค้า'));
     const c = o.customer;
@@ -589,7 +595,6 @@ async function saveDelivery(btn) {
       body.approval = ap.approval;
     }
     const bill = await api('deliver', body);
-    LS.set('staff', by);
     toast('บันทึกบิล ' + bill.bill_no + ' แล้ว');
     printDocs(billDoc(bill, 'สำหรับร้าน') + billDoc(bill, 'สำหรับลูกค้า'));
     $('#dl-note').value = ''; $('#dl-pay-ref').value = ''; $('#dl-tax').checked = false;
@@ -1062,7 +1067,7 @@ async function saveSettings(ev) {
     const changedRetail = set.retail_sheet_id !== String(S.settings.retail_sheet_id || '');
     S.settings = await api('saveSettings', { by, settings: set, new_admin_code: f.new_admin_code.value, approval: ap.approval });
     toast('บันทึกการตั้งค่าแล้ว');
-    if (f.new_admin_code.value) { toast('เปลี่ยนรหัสแอดมินแล้ว ทุกเครื่องต้องใส่รหัสใหม่'); S.token = ''; LS.del('token'); show('scr-unlock'); return; }
+    if (f.new_admin_code.value) toast('เปลี่ยนรหัสแอดมินแล้ว ใช้รหัสใหม่ในการอนุมัติครั้งต่อไป');
     if (changedRetail) syncParts(true);
     renderAdmin();
   });
@@ -1093,10 +1098,15 @@ function bindStatic() {
   $('#unlock-reset-url').onclick = (e) => { e.preventDefault(); LS.del('apiUrl'); S.apiUrl = ''; show('scr-setup'); };
   $('#unlock-form').onsubmit = async (ev) => {
     ev.preventDefault(); $('#unlock-err').textContent = '';
-    try { const r = await api('unlock', { code: $('#unlock-code').value }); S.token = r.token; LS.set('token', r.token); $('#unlock-code').value = ''; await start(); }
+    const user = $('#login-user').value.trim();
+    try {
+      const r = await api('login', { username: user, pin: $('#unlock-code').value });
+      S.token = r.token; S.user = r.user; LS.set('token', r.token); LS.set('user', JSON.stringify(r.user)); LS.set('lastUser', user);
+      $('#unlock-code').value = ''; await start();
+    }
     catch (e) { $('#unlock-err').textContent = e.message; }
   };
-  $('#staff-name').onchange = () => { LS.set('staff', $('#staff-name').value.trim()); $('#staff-name').classList.remove('need'); };
+  $('#logout').onclick = (e) => { e.preventDefault(); if (confirm('ออกจากระบบ?')) logout(); };
   $$('.tabs button').forEach((b) => { b.onclick = () => switchTab(b.dataset.tab); });
   $('#modal').onclick = (e) => { if (e.target.id === 'modal') closeModal(); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').classList.contains('hidden')) closeModal(); });
@@ -1139,7 +1149,6 @@ function bindStatic() {
   $('#ad-cexcel').onclick = () => saveXlsx(`ลูกค้าขายส่ง ${todayISO()}.xlsx`, [['ลูกค้า', [['รหัส', 'ชื่อบนบิล', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ที่อยู่', 'โทร', 'เลขผู้เสียภาษี', 'กลุ่ม', 'ทุน+%', 'ปัดขึ้น', 'เครดิต(วัน)'],
     ...S.customers.map((c) => [c.code, c.display, c.title, c.first, c.last, c.address, c.phone, c.taxid, c.group, c.cp_pct, truthy(c.cp_roundup) ? 'ใช่' : '', c.credit_days])]]]);
   $('#ad-audit').onclick = loadAudit;
-  $('#ad-lock').onclick = (e) => { e.preventDefault(); if (confirm('ปิดการใช้งานเครื่องนี้? ต้องใส่รหัสแอดมินใหม่เพื่อใช้อีกครั้ง')) { LS.del('token'); S.token = ''; show('scr-unlock'); } };
   $('#ad-reparts').onclick = (e) => { e.preventDefault(); syncParts(true); };
 }
 
